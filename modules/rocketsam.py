@@ -40,6 +40,7 @@ class RocketSam:
 
     async def get_contract_with_least_number_txs(self):
         logger.info('Searching for the pool with the least number of interactions')
+        random.shuffle(ROCKETSAM_CONTRACTS[self.chain])
         pools = {}
         for contract_address in ROCKETSAM_CONTRACTS[self.chain]:
             depositsCount, depositsVolume = await self.get_address_pool_statistic(contract_address)
@@ -96,6 +97,10 @@ class RocketSam:
             else:
                 amount = self.value
                 value = int(amount + fee)
+
+            if amount < 0:
+                logger.error(f'{self.module_str} | amount < 0')
+                return False, contract_address
             
             contract_txn = await contract.functions.deposit(amount).build_transaction(
                 {
@@ -108,12 +113,12 @@ class RocketSam:
             )
 
             if self.manager.get_total_fee(contract_txn) == False: 
-                return False
+                return False, contract_address
 
             return contract_txn, contract_address
 
         except Exception as error:
-            logger.error(error)
+            logger.error(f'{self.module_str} | {error}')
             # list_send.append(f'{STR_CANCEL}{self.module_str} | deposit | {error}')
             return False, contract_address
         
@@ -183,7 +188,6 @@ class RocketSam:
                     txn_type = "withdraw"
                 else:
                     status, tx_link = None, "error"
-                    
 
             if status == 1:
                 if txn_type == "deposit":

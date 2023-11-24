@@ -55,7 +55,7 @@ async def handle_transaction(module_name: str, params: dict, key: str, number: s
 async def execute_transaction(transaction: dict, func_instance):
     """Executes the transaction with retries in case of failure"""
     attempts = 0
-    while attempts <= RETRY:
+    while attempts < RETRY:
         status, tx_link = await func_instance.manager.send_tx(transaction)
 
         if not status:
@@ -113,12 +113,14 @@ async def worker_tracks(key: str, number: str, track: dict):
             break # Break the loop if the transaction fails
 
 async def main_workflow(wallet_batches: list, track=None):
+    index = 0
     for batch in wallet_batches:
         if CHECK_GWEI:
             await wait_gas()
 
         tasks = []
-        for index, wallet_key in enumerate(batch, start=1):
+        for wallet_key in batch:
+            index += 1
             if track:
                 tasks.append(asyncio.create_task(worker_tracks(wallet_key, f'[{index}/{len(WALLETS)}]', track)))
             else:
@@ -141,10 +143,10 @@ async def main():
     batches = [WALLETS[i:i + WALLETS_IN_BATCH] for i in range(0, len(WALLETS), WALLETS_IN_BATCH)]
 
     use_tracks = inquirer.prompt([
-        inquirer.List('use_tracks', message="Use tracks?", choices=["Yes", "No"], carousel=True)
+        inquirer.List('use_tracks', message="What are we doing?", choices=["Use tracks", "Use only rocketsam module"], carousel=True)
     ])['use_tracks']
     
-    if use_tracks == "Yes":
+    if use_tracks == "Use tracks":
         chains = list(chains_tracks.keys())
         chain = inquirer.prompt([inquirer.List('correct', message="Choose a chain: ", choices=chains, carousel=True)])['correct']
         chain_tracks = ['{}. {}'.format(i, ' => '.join([f'{data["module_name"]} {data.get("description", "")}'.strip() 
