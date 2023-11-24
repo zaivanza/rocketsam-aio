@@ -45,7 +45,6 @@ class OrbiterBridge:
         return decimal.Decimal(result_str)
 
     def get_orbiter_limits(self):
-
         orbiter_ids = {
             'ethereum'      : '1',
             'optimism'      : '7',
@@ -60,15 +59,15 @@ class OrbiterBridge:
             'linea'         : '23',
             'base'          : '21',
             'mantle'        : '24',
+            'scroll'        : '19',
+            'zora'          : '30',
         }
 
         from_maker  = orbiter_ids[self.from_chain]
         to_maker    = orbiter_ids[self.to_chain]
 
         maker_x_maker = f'{from_maker}-{to_maker}'
-
         for maker in ORBITER_MAKER:
-
             if maker_x_maker == maker:
                 
                 min_bridge  = ORBITER_MAKER[maker]['ETH-ETH']['minPrice']
