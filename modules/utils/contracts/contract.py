@@ -13,6 +13,7 @@ ORBITER_AMOUNT = {
     'base'          : 0.000000000000009021,
     'mantle'        : 0.000000000000009024,
     'scroll'        : 0.000000000000009019,
+    'zora'          : 0.000000000000009030,
 }
 
 ORBITER_AMOUNT_STR = {
@@ -30,6 +31,7 @@ ORBITER_AMOUNT_STR = {
     'base'          : '9021',
     'mantle'        : '9024',
     'scroll'        : '9019',
+    'zora'          : '9030',
 }
 
 # contract with X network to starknet
