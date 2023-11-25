@@ -77,7 +77,7 @@ class RocketSam:
             contract = await self.get_contract(contract_address)
             fee = await self.get_deposit_fee(contract_address, self.value)
 
-            # передаем value 1 для подсчета газа
+            # pass value 1 for gas counting
             contract_txn = await contract.functions.deposit(1).build_transaction(
                 {
                     "from": self.manager.address,

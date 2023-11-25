@@ -19,7 +19,7 @@ chains_tracks = {
     "scroll": scroll_tracks,
     "zora": zora_tracks,
     "linea": linea_tracks,
-    "polygon_zkevm": polygon_zkevm_tracks,
+    # "polygon_zkevm": polygon_zkevm_tracks,
     "arbitrum_nova": nova_tracks,
 }
 
