@@ -166,3 +166,9 @@ OKX_KEYS = {
         'password'  : 'your_api_password',
     },
 }
+
+# RPC for starknet interactions
+STARKNET_RPC = 'https://g.w.lavanet.xyz:443/gateway/strk/rpc-http/f7ee0000000000000000000000000000'
+STARKNET_SCANNER = 'https://voyager.online'
+STARKNET_DEPOSIT_GAS = 1100000000000000
+STARKNET_WITHDRAW_GAS = 500000000000000

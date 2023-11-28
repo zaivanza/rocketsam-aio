@@ -1,4 +1,4 @@
-from config import WALLETS, STR_DONE, STR_CANCEL
+from config import WALLETS, STR_DONE, STR_CANCEL, STARKNET_KEYS, STARKNET_ADDRESSES
 from setting import (
     RANDOMIZER, CHECK_GWEI, TG_BOT_SEND, IS_SLEEP, DELAY_SLEEP, RETRY, WALLETS_IN_BATCH
 )
@@ -6,6 +6,7 @@ from modules.utils.helpers import list_send, wait_gas, send_msg, async_sleeping
 from modules.utils.manager_async import Web3ManagerAsync
 from modules import *
 from tracks import *
+from setting import Value_RocketSam
 
 from loguru import logger
 import random
@@ -89,7 +90,9 @@ async def worker_tracks(key: str, number: str, track: dict):
 
         if params['module_name'] == 'rocketsam':
             # Handling the RocketSam module
-            rocket_sam_instance = RocketSam(key, number)
+            chain = random.choice(Value_RocketSam.chain)
+            if (chain == 'starknet'): rocket_sam_instance = RocketSam(chain, '', number, )
+            else: rocket_sam_instance = RocketSam(chain, key, number)
             await rocket_sam_instance.main()
             continue
 
@@ -112,8 +115,35 @@ async def worker_tracks(key: str, number: str, track: dict):
             logger.error(f'{number} | module not successful, cycle broken')
             break # Break the loop if the transaction fails
 
+async def main_stark_workflow(stark_wallet_batches: list[(str, str)], track=None):
+    index = 0
+    for batch in stark_wallet_batches:
+        if CHECK_GWEI:
+            await wait_gas()
+
+        tasks = []
+        for (key, address) in batch:
+            index += 1
+            if track:
+                tasks.append(asyncio.create_task(worker_tracks(key, f'[{index}/{len(WALLETS)}]', track)))
+            else:
+                rocket_sam_instance = RocketSam(chain='starknet', key = None, number=f'[{index}/{len(WALLETS)}]', stark_key=key, stark_address=address)
+                tasks.append(asyncio.create_task(rocket_sam_instance.main()))
+
+        await asyncio.gather(*tasks)
+
+        if TG_BOT_SEND and list_send:
+            send_msg()
+            list_send.clear()
+
+        if IS_SLEEP and track:
+            await async_sleeping(*DELAY_SLEEP)
+
 async def main_workflow(wallet_batches: list, track=None):
     index = 0
+    chains = set(Value_RocketSam.chain)
+    if ('starknet' in chains):
+        chains.remove('starknet')
     for batch in wallet_batches:
         if CHECK_GWEI:
             await wait_gas()
@@ -124,7 +154,8 @@ async def main_workflow(wallet_batches: list, track=None):
             if track:
                 tasks.append(asyncio.create_task(worker_tracks(wallet_key, f'[{index}/{len(WALLETS)}]', track)))
             else:
-                rocket_sam_instance = RocketSam(wallet_key, f'[{index}/{len(WALLETS)}]')
+                chain = random.choice(chains)
+                rocket_sam_instance = RocketSam(chain, wallet_key, f'[{index}/{len(WALLETS)}]')
                 tasks.append(asyncio.create_task(rocket_sam_instance.main()))
 
         await asyncio.gather(*tasks)
@@ -140,8 +171,6 @@ async def main():
     if RANDOMIZER:
         random.shuffle(WALLETS)
 
-    batches = [WALLETS[i:i + WALLETS_IN_BATCH] for i in range(0, len(WALLETS), WALLETS_IN_BATCH)]
-
     use_tracks = inquirer.prompt([
         inquirer.List('use_tracks', message="What are we doing?", choices=["Use tracks", "Use only rocketsam module"], carousel=True)
     ])['use_tracks']
@@ -155,6 +184,15 @@ async def main():
         track_id = inquirer.prompt([inquirer.List('correct', message="Choose a track: ", choices=chain_tracks, carousel=True)])['correct'].split('.')[0]
         selected_track = chains_tracks[chain][int(track_id) - 1]
 
-        await main_workflow(batches, selected_track)
+        if (chain == 'starknet'):
+            batches = [(STARKNET_KEYS[i:i + WALLETS_IN_BATCH], STARKNET_ADDRESSES[i:i + WALLETS_IN_BATCH]) for i in range(0, len(STARKNET_ADDRESSES), WALLETS_IN_BATCH)]
+            await main_stark_workflow(batches, selected_track)
+        else:
+            batches = [WALLETS[i:i + WALLETS_IN_BATCH] for i in range(0, len(WALLETS), WALLETS_IN_BATCH)]
+            await main_workflow(batches, selected_track)
     else:
+        batches = [WALLETS[i:i + WALLETS_IN_BATCH] for i in range(0, len(WALLETS), WALLETS_IN_BATCH)]
         await main_workflow(batches)
+        if ('starknet' in Value_RocketSam.chain):
+            stark_batches = [[(STARKNET_KEYS[j], STARKNET_ADDRESSES[j]) for j in range(i, i + WALLETS_IN_BATCH)] for i in range(0, len(STARKNET_ADDRESSES), WALLETS_IN_BATCH)]
+            await main_stark_workflow(stark_batches)
