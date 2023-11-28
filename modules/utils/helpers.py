@@ -8,6 +8,7 @@ import math
 from tqdm import tqdm
 import asyncio, aiohttp
 from eth_account import Account
+from starknet_py.serialization import Uint256Serializer
 
 from datas.data import DATA, TG_TOKEN, TG_ID
 from setting import MAX_GWEI
@@ -135,3 +136,13 @@ def is_private_key(key):
         return Account().from_key(key).address
     except:
         return False
+    
+def deserialize_uint256(uint: tuple[int]) -> int:
+        uint_list = list(uint)
+        if (len(uint_list) == 1):
+            uint_list.append(0)
+        return Uint256Serializer().deserialize(uint_list)
+    
+def serialize_uint256(uint: int) -> dict[str, int]:
+    uint_serialized = Uint256Serializer().serialize(uint)
+    return { 'low': uint_serialized[0], 'high': uint_serialized[1] }

@@ -312,6 +312,7 @@ ARBITRUM_BRIDGE_CONTRACTS = {
     "nova": "0xc4448b71118c9071Bcb9734A0EAc55D18A153949"
 }
 
+STARKNET_ETH_CONTRACT = "0x049D36570D4e46f48e99674bd3fcc84644DdD6b96F7C741B1562B82f9e004dC7"
 ROCKETSAM_CONTRACTS = {
     "ethereum"      : [],
     "zora"          : [
@@ -398,5 +399,9 @@ ROCKETSAM_CONTRACTS = {
         "0x5ae3cB086887A6FB7662eE58Cf1d5113E69bBA62",
         "0x1feF777Fb93Aa45a6Cefcf5507c665b64b301FB3",
         "0x0557D4C04BB994719b087d2950841BF25cf39899"
+    ],
+    "starknet"      : [
+        # TODO add deployed contracts
+        "0x3bc6c07e1c4bce3c13df3c45b9eb091599c89e966c7190cdd1ed37e07137771"
     ],
 }

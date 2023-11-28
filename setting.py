@@ -37,7 +37,7 @@ class Value_RocketSam:
 
     module = 2 # Option selection for the module's behavior (valid options: 1, 2, or 3)
 
-    chain = ["nova"] # List of blockchain networks to interact with
+    chain = ["starknet"] # List of blockchain networks to interact with
     
     amount_interactions = [2, 3] # Range of the number of times to interact with contracts, range should be >= 1 for both values
     deposit_all_balance = True # Flag to deposit the entire wallet balance (set to True to activate)
