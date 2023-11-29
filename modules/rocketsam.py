@@ -4,7 +4,7 @@ from .utils.contracts.contract import ROCKETSAM_CONTRACTS, STARKNET_ETH_CONTRACT
 from .utils.helpers import list_send, intToDecimal, async_sleeping, decimalToInt, round_to, deserialize_uint256, serialize_uint256
 from .utils.manager_async import Web3ManagerAsync
 from setting import Value_RocketSam, RETRY, IS_SLEEP, DELAY_SLEEP
-from datas.data import DATA, STARKNET_RPC, STARKNET_SCANNER, STARKNET_DEPOSIT_GAS, STARKNET_WITHDRAW_GAS
+from datas.data import DATA, STARKNET_RPC, STARKNET_SCANNER, STARKNET_DEPOSIT_GAS, STARKNET_WITHDRAW_GAS, STARKNET_APPROVE_GAS
 
 from loguru import logger
 from web3 import Web3
@@ -69,7 +69,7 @@ class RocketSam:
             provider=self.account,
         )
     
-    async def get_stark_pool_contract_with_least_txs(self) -> Contract:
+    async def get_stark_contract_with_least_txs(self) -> Contract:
         logger.info('Searching for the pool with the least number of interactions')
 
         random.shuffle(ROCKETSAM_CONTRACTS[self.STARKNET])
@@ -103,7 +103,7 @@ class RocketSam:
             if self.deposit_all_balance:
                 if module   == 1: multiplier = 1
                 elif module == 2: multiplier = self.GAS_MULTIPLIER 
-                self.dep_amount = int(self.value - fee - (STARKNET_DEPOSIT_GAS * multiplier) * 0.9999) - self.keeper
+                self.dep_amount = int(self.value - fee - ((STARKNET_DEPOSIT_GAS + STARKNET_APPROVE_GAS) * multiplier) * 0.9999) - self.keeper
             else:
                 self.dep_amount = self.value
 
@@ -117,25 +117,33 @@ class RocketSam:
             ))
             
             calls = []
+            approve_fee = 0
             if (fee + self.dep_amount > allowance):
                 approve_value = serialize_uint256(fee + self.dep_amount)
                 approve_call = Call(
                     to_addr=int(STARKNET_ETH_CONTRACT, 0),
                     selector=get_selector_from_name("approve"),
-                    calldata=[contract.data.address, approve_value[0], approve_value[1]],
+                    calldata=[contract.data.address, approve_value['low'], approve_value['high']],
                 )
+                invoke_transaction = await self.account.sign_invoke_transaction(approve_call, auto_estimate=True)
+                approve_fee = invoke_transaction.max_fee
                 calls.append(approve_call)
 
             dep_amount = serialize_uint256(self.dep_amount)
+            deposit_call = Call(
+                to_addr=contract.address,
+                selector=get_selector_from_name("deposit"),
+                calldata=[dep_amount['low'], dep_amount['high']],
+            )
+            # TODO change estimating fee flow with following lines:
+            # invoke_transaction = await self.account.sign_invoke_transaction(deposit_call, auto_estimate=True)
+            # deposit_fee = invoke_transaction.max_fee
+            deposit_fee = STARKNET_DEPOSIT_GAS
             calls.append(
-                Call(
-                    to_addr=contract.address,
-                    selector=get_selector_from_name("deposit"),
-                    calldata=[dep_amount[0], dep_amount[1]],
-                )
+                deposit_call
             )
 
-            resp = await self.account.execute(calls=calls, max_fee=STARKNET_DEPOSIT_GAS)
+            resp = await self.account.execute(calls=calls, max_fee=approve_fee + deposit_fee)
             tx = await self.account.client.wait_for_tx(resp.transaction_hash)
             tx_hash = hex(tx.transaction_hash)
             tx_status = tx.execution_status
@@ -146,13 +154,13 @@ class RocketSam:
     
     async def stark_withdraw(self, contract: Contract) -> (str | None, TransactionExecutionStatus | None):
         try:
-            invocation = await contract.functions['withdraw'].invoke(max_fee=STARKNET_WITHDRAW_GAS)
+            max_fee = (await contract.functions['withdraw'].prepare(max_fee=STARKNET_WITHDRAW_GAS).estimate_fee()).overall_fee
+            invocation = await contract.functions['withdraw'].invoke(max_fee=max_fee)
             tx = await invocation.wait_for_acceptance()
             tx_hash = hex(tx.hash)
             tx_status = tx.status
             if (tx_status == TransactionFinalityStatus.ACCEPTED_ON_L2): 
                 tx_status = TransactionExecutionStatus.SUCCEEDED
-            print(tx_status)
             return (tx_hash, tx_status)
         except Exception as error:
             logger.error(f'{self.module_str} | error while withdrawing: {error}')
