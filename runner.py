@@ -154,7 +154,7 @@ async def main_workflow(wallet_batches: list, track=None):
             if track:
                 tasks.append(asyncio.create_task(worker_tracks(wallet_key, f'[{index}/{len(WALLETS)}]', track)))
             else:
-                chain = random.choice(chains)
+                chain = random.choice(list(chains))
                 rocket_sam_instance = RocketSam(chain, wallet_key, f'[{index}/{len(WALLETS)}]')
                 tasks.append(asyncio.create_task(rocket_sam_instance.main()))
 
